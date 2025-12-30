@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS Calculator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assest\css\style.css">
+</head>
+
+<body>
+    <div class="calculator-container">
+        <div class="status-bar">
+            <div>3:33</div>
+            <div class="time">Tue 30 Dec</div>
+            <div>
+                <i class="fas fa-signal"></i>
+                <i class="fas fa-wifi" style="margin-left: 5px;"></i>
+                <i class="fas fa-battery-full" style="margin-left: 5px;"></i>
+            </div>
+        </div>
+
+        <div class="display">
+            <div class="previous-operand" id="previousOperand"></div>
+            <div class="current-operand" id="currentOperand">0</div>
+        </div>
+
+        <div class="buttons-grid">
+            <!-- Row 1 -->
+            <button class="button light-gray" data-action="clear">AC</button>
+            <button class="button light-gray" data-action="toggle-sign">+/-</button>
+            <button class="button light-gray" data-action="percent">%</button>
+            <button class="button orange" data-action="divide">÷</button>
+
+            <!-- Row 2 -->
+            <button class="button dark-gray" data-number="7">7</button>
+            <button class="button dark-gray" data-number="8">8</button>
+            <button class="button dark-gray" data-number="9">9</button>
+            <button class="button orange" data-action="multiply">×</button>
+
+            <!-- Row 3 -->
+            <button class="button dark-gray" data-number="4">4</button>
+            <button class="button dark-gray" data-number="5">5</button>
+            <button class="button dark-gray" data-number="6">6</button>
+            <button class="button orange" data-action="subtract">−</button>
+
+            <!-- Row 4 -->
+            <button class="button dark-gray" data-number="1">1</button>
+            <button class="button dark-gray" data-number="2">2</button>
+            <button class="button dark-gray" data-number="3">3</button>
+            <button class="button orange" data-action="add">+</button>
+
+            <!-- Row 5 -->
+            <button class="button dark-gray zero" data-number="0">0</button>
+            <button class="button dark-gray" data-action="decimal">.</button>
+            <button class="button orange" data-action="equals">=</button>
+        </div>
+
+        <div class="footer"></div>
+    </div>
+
+    <script>
+        // Calculator state
+        const calculator = {
+            currentOperand: '0',
+            previousOperand: '',
+            operation: undefined,
+            waitingForNewOperand: false
+        };
+
+        // DOM elements
+        const currentOperandElement = document.getElementById('currentOperand');
+        const previousOperandElement = document.getElementById('previousOperand');
+
+        // Update display
+        function updateDisplay() {
+            currentOperandElement.textContent = calculator.currentOperand;
+            previousOperandElement.textContent = calculator.previousOperand;
+
+            // Add animation to show update
+            currentOperandElement.classList.add('updated');
+            setTimeout(() => currentOperandElement.classList.remove('updated'), 200);
+        }
+
+        // Add number to current operand
+        function inputNumber(number) {
+            if (calculator.waitingForNewOperand) {
+                calculator.currentOperand = number;
+                calculator.waitingForNewOperand = false;
+            } else {
+                calculator.currentOperand = calculator.currentOperand === '0' ? number : calculator.currentOperand + number;
+            }
+            updateDisplay();
+        }
+
+        // Add decimal point
+        function inputDecimal() {
+            if (calculator.waitingForNewOperand) {
+                calculator.currentOperand = '0.';
+                calculator.waitingForNewOperand = false;
+            } else if (!calculator.currentOperand.includes('.')) {
+                calculator.currentOperand += '.';
+            }
+            updateDisplay();
+        }
+
+        // Clear all
+        function clearAll() {
+            calculator.currentOperand = '0';
+            calculator.previousOperand = '';
+            calculator.operation = undefined;
+            calculator.waitingForNewOperand = false;
+            updateDisplay();
+        }
+
+        // Toggle positive/negative
+        function toggleSign() {
+            calculator.currentOperand = calculator.currentOperand.startsWith('-')
+                ? calculator.currentOperand.slice(1)
+                : '-' + calculator.currentOperand;
+            updateDisplay();
+        }
+
+        // Convert to percentage
+        function convertToPercentage() {
+            const current = parseFloat(calculator.currentOperand);
+            calculator.currentOperand = (current / 100).toString();
+            updateDisplay();
+        }
+
+        // Handle operator selection
+        function handleOperation(nextOperation) {
+            const current = parseFloat(calculator.currentOperand);
+
+            if (calculator.previousOperand !== '' && calculator.operation && !calculator.waitingForNewOperand) {
+                compute();
+            }
+
+            calculator.operation = nextOperation;
+            calculator.previousOperand = `${calculator.currentOperand} ${getOperationSymbol(nextOperation)}`;
+            calculator.waitingForNewOperand = true;
+            updateDisplay();
+        }
+
+        // Get symbol for operation
+        function getOperationSymbol(operation) {
+            switch (operation) {
+                case 'add': return '+';
+                case 'subtract': return '−';
+                case 'multiply': return '×';
+                case 'divide': return '÷';
+                default: return '';
+            }
+        }
+
+        // Perform calculation
+        function compute() {
+            let computation;
+            const prev = parseFloat(calculator.previousOperand);
+            const current = parseFloat(calculator.currentOperand);
+
+            if (isNaN(prev) || isNaN(current)) return;
+
+            switch (calculator.operation) {
+                case 'add':
+                    computation = prev + current;
+                    break;
+                case 'subtract':
+                    computation = prev - current;
+                    break;
+                case 'multiply':
+                    computation = prev * current;
+                    break;
+                case 'divide':
+                    computation = current === 0 ? 'Error' : prev / current;
+                    break;
+                default:
+                    return;
+            }
+
+            calculator.currentOperand = computation.toString();
+            calculator.operation = undefined;
+            calculator.previousOperand = '';
+            calculator.waitingForNewOperand = true;
+            updateDisplay();
+        }
+
+        // Button click handlers
+        document.querySelector('.buttons-grid').addEventListener('click', (event) => {
+            if (!event.target.matches('button')) return;
+
+            const button = event.target;
+
+            if (button.hasAttribute('data-number')) {
+                inputNumber(button.getAttribute('data-number'));
+                return;
+            }
+
+            if (button.hasAttribute('data-action')) {
+                const action = button.getAttribute('data-action');
+
+                switch (action) {
+                    case 'clear':
+                        clearAll();
+                        break;
+                    case 'toggle-sign':
+                        toggleSign();
+                        break;
+                    case 'percent':
+                        convertToPercentage();
+                        break;
+                    case 'decimal':
+                        inputDecimal();
+                        break;
+                    case 'equals':
+                        compute();
+                        break;
+                    case 'add':
+                    case 'subtract':
+                    case 'multiply':
+                    case 'divide':
+                        // Update active operator styling
+                        document.querySelectorAll('.orange').forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+                        handleOperation(action);
+                        break;
+                }
+            }
+        });
+
+        // Keyboard support
+        document.addEventListener('keydown', (event) => {
+            const key = event.key;
+
+            // Number keys
+            if (key >= '0' && key <= '9') {
+                inputNumber(key);
+            }
+
+            // Decimal point
+            if (key === '.') {
+                inputDecimal();
+            }
+
+            // Operations
+            if (key === '+') {
+                document.querySelector('[data-action="add"]').click();
+            }
+
+            if (key === '-') {
+                document.querySelector('[data-action="subtract"]').click();
+            }
+
+            if (key === '*') {
+                document.querySelector('[data-action="multiply"]').click();
+            }
+
+            if (key === '/') {
+                event.preventDefault();
+                document.querySelector('[data-action="divide"]').click();
+            }
+
+            // Enter or equals for calculation
+            if (key === 'Enter' || key === '=') {
+                document.querySelector('[data-action="equals"]').click();
+            }
+
+            // Escape for clear
+            if (key === 'Escape') {
+                document.querySelector('[data-action="clear"]').click();
+            }
+
+            // Backspace for backspace (optional feature)
+            if (key === 'Backspace') {
+                calculator.currentOperand = calculator.currentOperand.length > 1
+                    ? calculator.currentOperand.slice(0, -1)
+                    : '0';
+                updateDisplay();
+            }
+        });
+
+        // Initialize display
+        updateDisplay();
+    </script>
+</body>
+
+</html>
